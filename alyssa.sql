@@ -1,25 +1,35 @@
 ------- Section 1: Sales Performance Analysis ------
 -- 1.1 Who are our top 5 employees generating the most sales revenue?
-with cte as (select 
-    e.first_name ||', '|| e.last_name AS employee_name,
-    sum(s.price) AS total_sales_revenue,
-    count(*) AS number_of_sales,
-    avg(s.price) AS average_sale_value,
-    min(s.pickup_date )as first_sale_date,
-    max(s.pickup_date )as last_sale_date
-from sales s
+with cte as (
+select
+	e.first_name || ', ' || e.last_name as employee_name,
+	sum(s.price) as total_sales_revenue,
+	count(*) as number_of_sales,
+	avg(s.price) as average_sale_value,
+	min(s.pickup_date) as first_sale_date,
+	max(s.pickup_date) as last_sale_date
+from
+	sales s
 join employees e 
-    ON s.employee_id = e.employee_id
-where s.sale_returned ='false'
-group by e.employee_id, e.first_name, e.last_name
-order by total_sales_revenue desc
+    on
+	s.employee_id = e.employee_id
+where
+	s.sale_returned = 'false'
+group by
+	e.employee_id,
+	e.first_name,
+	e.last_name
+order by
+	total_sales_revenue desc
 limit 5)
-select employee_name as "Employee Name",
-to_char(total_sales_revenue,'FM$999,999,990') as "Total Sales Revenue",
-number_of_sales as "Number of Sales",
-to_char(average_sale_value,'FM$999,999,990')"Average Sale Value",
-last_sale_date - first_sale_date as "Tenure(days)"
-from cte
+select
+	employee_name as "Employee Name",
+	to_char(total_sales_revenue, 'FM$999,999,990') as "Total Sales Revenue",
+	number_of_sales as "Number of Sales",
+	to_char(average_sale_value, 'FM$999,999,990')"Average Sale Value",
+	last_sale_date - first_sale_date as "Tenure(days)"
+from
+	cte
 
 -- 1.2 Which 5 dealerships generate the most sales income?
 select
