@@ -102,45 +102,6 @@ join employees e on
 join dealerships d on
 	es.dealership_id = d.dealership_id 
 	
--- 4.2 Show employee sales rankings with running totals throughout the year.
-with monthly_sales as (
-select
-	s.employee_id,
-	sum(s.price) as monthly_revenue,
-	date_trunc('month', s.purchase_date ) as month
-from
-	sales s
-where
-	s.sale_returned = 'false'
-group by
-	s.employee_id,
-	date_trunc('month', s.purchase_date )
-),
-sales_rank as(
-select
-	*,
-	sum(monthly_revenue)over(partition by employee_id order by month)as running_total,
-	rank() over (partition by month
-order by
-	monthly_revenue desc) as employee_rank
-from
-	monthly_sales
-)
-select
-	e.first_name || ', ' || e.last_name as "Employee Name",
-	cast(sr.month as Date) as "Month",
-	to_char(sr.monthly_revenue , 'FM$999,999,990') "Monthly Sales",
-	sr.running_total as "Running Total",
-	employee_rank as "Rank this month"
-from
-	sales_rank sr
-join employees e on
-	sr.employee_id = e.employee_id
-order by
-	"Employee Name",
-	month
-
-
 ------- Section 2: Inventory Intelligence ------
 
 -- 2.1 Inventory Count by Model (also include make, oldest vehicle, newest vehicle)
@@ -211,3 +172,41 @@ ORDER BY
 
 -- 2.4 Slow-Moving Inventory & 4.3 Vehicle Turnover Rate
 -- Database doesn’t store dates when vehicles join/leave inventory. But I think in the real world this might be accomplished with a separate Inventory History table storing date_in and date_out (null if still in stock). See presentation for screenshot
+
+-- 4.2 Show employee sales rankings with running totals throughout the year.
+with monthly_sales as (
+select
+	s.employee_id,
+	sum(s.price) as monthly_revenue,
+	date_trunc('month', s.purchase_date ) as month
+from
+	sales s
+where
+	s.sale_returned = 'false'
+group by
+	s.employee_id,
+	date_trunc('month', s.purchase_date )
+),
+sales_rank as(
+select
+	*,
+	sum(monthly_revenue)over(partition by employee_id order by month)as running_total,
+	rank() over (partition by month
+order by
+	monthly_revenue desc) as employee_rank
+from
+	monthly_sales
+)
+select
+	e.first_name || ', ' || e.last_name as "Employee Name",
+	cast(sr.month as Date) as "Month",
+	to_char(sr.monthly_revenue , 'FM$999,999,990') "Monthly Sales",
+	sr.running_total as "Running Total",
+	employee_rank as "Rank this month"
+from
+	sales_rank sr
+join employees e on
+	sr.employee_id = e.employee_id
+order by
+	"Employee Name",
+	month
