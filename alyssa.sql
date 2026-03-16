@@ -1,3 +1,136 @@
+------- Section 1: Sales Performance Analysis ------
+-- 1.1 Who are our top 5 employees generating the most sales revenue?
+with cte as (select 
+    e.first_name ||', '|| e.last_name AS employee_name,
+    sum(s.price) AS total_sales_revenue,
+    count(*) AS number_of_sales,
+    avg(s.price) AS average_sale_value,
+    min(s.pickup_date )as first_sale_date,
+    max(s.pickup_date )as last_sale_date
+from sales s
+join employees e 
+    ON s.employee_id = e.employee_id
+where s.sale_returned ='false'
+group by e.employee_id, e.first_name, e.last_name
+order by total_sales_revenue desc
+limit 5)
+select employee_name as "Employee Name",
+to_char(total_sales_revenue,'FM$999,999,990') as "Total Sales Revenue",
+number_of_sales as "Number of Sales",
+to_char(average_sale_value,'FM$999,999,990')"Average Sale Value",
+last_sale_date - first_sale_date as "Tenure(days)"
+from cte
+
+-- 1.2 Which 5 dealerships generate the most sales income?
+select
+	d.business_name "Dealership Name",
+	d.city as "Location",
+	to_char(sum(s.price), 'FM$999,999,990') "Total Sales Revenue",
+	count(s.dealership_id) as "Number of Sales"
+from
+	sales s
+join dealerships d on
+	s.dealership_id = d.dealership_id
+where
+	s.sale_returned = 'false'
+group by
+	d.business_name,
+	d.city
+order by
+	"Total Sales Revenue" desc
+limit 5
+	
+--1.3  Which vehicle model generated the most total sales income?
+with cte2 as(
+select
+	vt.make,
+	vt.model,
+	sum(s.price) total_revenue ,
+	count(s.vehicle_id),
+	avg(s.price) avg_revenue
+from
+	sales s
+join vehicles v on
+	s.vehicle_id = v.vehicle_id
+join vehicletypes vt on
+	v.vehicle_type_id = vt.vehicle_type_id
+where
+	s.sale_returned = 'false'
+group by vt.make , vt.model 
+order by total_revenue desc
+limit 5)
+select
+	make as "Make",
+	model "Model",
+	to_char(total_revenue , 'FM$999,999,990') "Total Revenue",
+	count as "Units Sold",
+	to_char(avg_revenue , 'FM$999,999,990') "Avg Sale Price"
+from
+	cte2
+	
+-- 1.4 Which employees generate the most income per dealership?
+with employee_sales as (
+select
+	dealership_id,
+	employee_id,
+	sum(price) as total_sales
+from
+	sales
+group by
+	dealership_id,
+	employee_id
+)
+select
+	d.business_name as "Dealership",
+	e.first_name || ', '|| e.last_name as "Employee Name",
+	es.total_sales as "Total Sales",
+	rank() over(partition by es.dealership_id order by total_sales desc) as "Rank at Dealership"
+from
+	employee_sales es
+join employees e on
+	es.employee_id = e.employee_id
+join dealerships d on
+	es.dealership_id = d.dealership_id 
+	
+-- 4.2 Show employee sales rankings with running totals throughout the year.
+with monthly_sales as (
+select
+	s.employee_id,
+	sum(s.price) as monthly_revenue,
+	date_trunc('month', s.purchase_date ) as month
+from
+	sales s
+where
+	s.sale_returned = 'false'
+group by
+	s.employee_id,
+	date_trunc('month', s.purchase_date )
+),
+sales_rank as(
+select
+	*,
+	sum(monthly_revenue)over(partition by employee_id order by month)as running_total,
+	rank() over (partition by month
+order by
+	monthly_revenue desc) as employee_rank
+from
+	monthly_sales
+)
+select
+	e.first_name || ', ' || e.last_name as "Employee Name",
+	cast(sr.month as Date) as "Month",
+	to_char(sr.monthly_revenue , 'FM$999,999,990') "Monthly Sales",
+	sr.running_total as "Running Total",
+	employee_rank as "Rank this month"
+from
+	sales_rank sr
+join employees e on
+	sr.employee_id = e.employee_id
+order by
+	"Employee Name",
+	month
+
+
 ------- Section 2: Inventory Intelligence ------
 
 -- 2.1 Inventory Count by Model (also include make, oldest vehicle, newest vehicle)
